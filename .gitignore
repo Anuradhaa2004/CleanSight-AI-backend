@@ -1,0 +1,22 @@
+# Secrets (Most Important)
+.env
+.env.local
+.env.*.local
+
+# Dependency folders
+node_modules/
+
+# Python/AI related (since you use YOLOv8)
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Logs and databases
+*.log
+database.sqlite
+
+# Uploads
+uploads/
+
