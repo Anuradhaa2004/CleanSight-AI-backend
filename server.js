@@ -41,7 +41,7 @@ const corsOrigin = process.env.CORS_ORIGIN || "";
   })
 );
 
-
+app.options('*', cors());
 
 
   app.use(express.json());
