@@ -43,7 +43,7 @@ app.use(
 
 app.options(/.*/, cors());
 
-const authRoutes = require("./routes/authRouter");
+const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
 app.use(express.json());
