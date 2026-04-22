@@ -14,7 +14,6 @@
 
 const corsOrigin = process.env.CORS_ORIGIN || "";
 
-  // Example:
   // CORS_ORIGIN=https://yourfrontend.vercel.app,http://localhost:5173
 
   const allowedOrigins = corsOrigin
