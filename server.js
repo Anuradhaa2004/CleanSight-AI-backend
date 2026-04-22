@@ -35,13 +35,13 @@ const corsOrigin = process.env.CORS_ORIGIN || "";
       console.log("❌ CORS Blocked:", cleanOrigin);
       return callback(new Error("Not allowed by CORS"));
     },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: "https://clean-sight-ai-frontend.vercel.app",
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
   })
 );
 
-app.options('*', cors());
 
 
   app.use(express.json());
