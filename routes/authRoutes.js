@@ -10,7 +10,7 @@ const {
   resetPassword
 } = require('../controllers/authController');
 
-router.post('/auth/request-otp', requestOTP);
+router.post('/request-otp', requestOTP);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', loginUser);
 router.get('/user', getUser);
