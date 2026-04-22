@@ -1,32 +1,31 @@
-  const express = require('express');
-  const cors = require('cors');
-  const dotenv = require('dotenv');
-  const connectDB = require('./config/db');
-  const fs = require('fs');
-  const path = require('path');
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
+const fs = require("fs");
+const path = require("path");
 
-  dotenv.config();
+dotenv.config();
 
-  connectDB();
+connectDB();
 
-  const app = express();
-
+const app = express();
 
 const corsOrigin = process.env.CORS_ORIGIN || "";
 
-  // CORS_ORIGIN=https://yourfrontend.vercel.app,http://localhost:5173
+// CORS_ORIGIN=https://yourfrontend.vercel.app,http://localhost:5173
 
-  const allowedOrigins = corsOrigin
-    ? corsOrigin.split(',').map((origin) => origin.trim().replace(/\/+$/, ''))
-    : [];
+const allowedOrigins = corsOrigin
+  ? corsOrigin.split(",").map((origin) => origin.trim().replace(/\/+$/, ""))
+  : [];
 
- app.use(
+app.use(
   cors({
     origin: function (origin, callback) {
       // Allow requests with no origin (Postman, mobile apps, etc.)
       if (!origin) return callback(null, true);
 
-      const cleanOrigin = origin.replace(/\/+$/, '');
+      const cleanOrigin = origin.replace(/\/+$/, "");
 
       if (allowedOrigins.includes(cleanOrigin)) {
         return callback(null, true);
@@ -35,55 +34,48 @@ const corsOrigin = process.env.CORS_ORIGIN || "";
       console.log("❌ CORS Blocked:", cleanOrigin);
       return callback(new Error("Not allowed by CORS"));
     },
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ["Content-Type", "Authorization"],
     origin: "https://clean-sight-ai-frontend.vercel.app",
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
-  })
+  }),
 );
 
 app.options(/.*/, cors());
 
+const authRoutes = require("./routes/authRouter");
+app.use("/api/auth", authRoutes);
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+const uploadsDir = path.join(__dirname, "uploads");
 
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-  const uploadsDir = path.join(__dirname, 'uploads');
+app.use("/uploads", express.static(uploadsDir));
 
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/reports", require("./routes/reportRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 
-  app.use('/uploads', express.static(uploadsDir));
+app.get("/", (req, res) => {
+  res.send("CleanSight AI API is running");
+});
 
+app.use((err, req, res, next) => {
+  console.error(err.message);
 
-  app.use('/api/auth', require('./routes/authRoutes'));
-  app.use('/api/reports', require('./routes/reportRoutes'));
-  app.use('/api/notifications', require('./routes/notificationRoutes'));
-
-
-
-  app.get('/', (req, res) => {
-    res.send('CleanSight AI API is running');
+  res.status(500).json({
+    success: false,
+    message: err.message || "Server Error",
   });
+});
 
+const PORT = process.env.PORT || 5000;
 
-
-  app.use((err, req, res, next) => {
-    console.error(err.message);
-
-    res.status(500).json({
-      success: false,
-      message: err.message || 'Server Error',
-    });
-  });
-
-
-
-  const PORT = process.env.PORT || 5000;
-
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
