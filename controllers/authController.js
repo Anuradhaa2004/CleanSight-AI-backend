@@ -285,7 +285,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfile: async (req, res) => {
-    const { originalEmail, email, name, password, assignedArea, about, profilePic } = req.body;
+    const { originalEmail, email, name, password, assignedArea, about, profilePic, dob, gender, exactLocation, country, languages } = req.body;
     const findEmail = originalEmail || email;
     if (!findEmail) return res.status(400).json({ message: 'Identifier email is required' });
     try {
