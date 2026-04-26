@@ -164,7 +164,15 @@ const getUser = async (req, res) => {
         id: user._id,
         role: user.role,
         name: user.name,
-        assignedArea: user.assignedArea || ''
+        password: user.password,
+        assignedArea: user.assignedArea || '',
+        about: user.about || '',
+        profilePic: user.profilePic || '',
+        dob: user.dob || '',
+        gender: user.gender || '',
+        exactLocation: user.exactLocation || '',
+        country: user.country || '',
+        languages: user.languages || []
       }
     });
   } catch (error) {
@@ -275,5 +283,70 @@ module.exports = {
   getUser,
   updateAssignedArea,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  updateProfile: async (req, res) => {
+    const { originalEmail, email, name, password, assignedArea, about, profilePic } = req.body;
+    const findEmail = originalEmail || email;
+    if (!findEmail) return res.status(400).json({ message: 'Identifier email is required' });
+    try {
+      const user = await User.findOne({ email: findEmail });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      // Check if new email is already taken
+      if (email && email !== findEmail) {
+        const existing = await User.findOne({ email });
+        if (existing) return res.status(400).json({ message: 'This email is already registered to another account' });
+        user.email = email;
+      }
+
+      if (name) user.name = name;
+      
+      if (password) {
+        // Enforce 3 changes in 2 weeks limit
+        const twoWeeksAgo = new Date();
+        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+        
+        const recentChanges = (user.passwordUpdateHistory || []).filter(date => new Date(date) > twoWeeksAgo);
+        
+        if (recentChanges.length >= 3) {
+          return res.status(400).json({ 
+            message: 'Security Limit: You can only update your password 3 times within a 14-day period. Please try again later.' 
+          });
+        }
+        
+        user.password = password;
+        if (!user.passwordUpdateHistory) user.passwordUpdateHistory = [];
+        user.passwordUpdateHistory.push(new Date());
+      }
+
+      if (assignedArea !== undefined) user.assignedArea = assignedArea;
+      if (about !== undefined) user.about = about;
+      if (profilePic !== undefined) user.profilePic = profilePic;
+      if (dob !== undefined) user.dob = dob;
+      if (gender !== undefined) user.gender = gender;
+      if (exactLocation !== undefined) user.exactLocation = exactLocation;
+      if (country !== undefined) user.country = country;
+      if (languages !== undefined) user.languages = languages;
+
+      await user.save();
+      res.status(200).json({
+        message: 'Profile updated successfully',
+        user: { 
+          email: user.email, 
+          name: user.name, 
+          role: user.role, 
+          assignedArea: user.assignedArea,
+          about: user.about,
+          profilePic: user.profilePic,
+          dob: user.dob,
+          gender: user.gender,
+          exactLocation: user.exactLocation,
+          country: user.country,
+          languages: user.languages
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  }
 };

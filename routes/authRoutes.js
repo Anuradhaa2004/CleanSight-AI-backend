@@ -7,7 +7,8 @@ const {
   getUser,
   updateAssignedArea,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  updateProfile
 } = require('../controllers/authController');
 
 router.post('/request-otp', requestOTP);
@@ -17,5 +18,6 @@ router.get('/user', getUser);
 router.post('/area', updateAssignedArea);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/update-profile', updateProfile);
 
 module.exports = router;

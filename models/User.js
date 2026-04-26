@@ -39,7 +39,41 @@ const userSchema = new mongoose.Schema({
   },
   passwordResetExpiry: {
     type: Date
-  }
+  },
+  about: {
+    type: String,
+    default: ''
+  },
+  profilePic: {
+    type: String,
+    default: ''
+  },
+  passwordUpdateHistory: [
+    {
+      type: Date
+    }
+  ],
+  dob: {
+    type: Date
+  },
+  gender: {
+    type: String,
+    enum: ['', 'Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'],
+    default: ''
+  },
+  exactLocation: {
+    type: String,
+    default: ''
+  },
+  country: {
+    type: String,
+    default: ''
+  },
+  languages: [
+    {
+      type: String
+    }
+  ]
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
