@@ -27,7 +27,7 @@ app.use(
 
       const cleanOrigin = origin.replace(/\/+$/, "");
 
-      if (allowedOrigins.includes(cleanOrigin)) {
+      if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.includes("localhost") || cleanOrigin.includes("127.0.0.1") || cleanOrigin.includes("vercel.app")) {
         return callback(null, true);
       }
 
@@ -35,7 +35,6 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     allowedHeaders: ["Content-Type", "Authorization"],
-    origin: "https://clean-sight-ai-frontend.vercel.app",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   }),

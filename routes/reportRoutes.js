@@ -13,10 +13,13 @@ const {
   confirmTicketResolution
 } = require('../controllers/reportController');
 
+const path = require('path');
+
 // Multer storage setup
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/')
+    // Ensuring files are always saved in backend/uploads
+    cb(null, path.join(__dirname, '..', 'uploads'))
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
