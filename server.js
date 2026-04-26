@@ -42,12 +42,8 @@ app.use(
 );
 
 app.options(/.*/, cors());
-app.use(express.json());
-
-const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
-
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const uploadsDir = path.join(__dirname, "uploads");
 
