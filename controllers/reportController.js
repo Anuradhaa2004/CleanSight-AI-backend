@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 const Report = require('../models/Report');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
@@ -251,6 +253,25 @@ const submitTicket = async (req, res) => {
       }
     }
 
+    // --- CLOUDINARY UPLOAD ---
+    let finalImageUrl = `/uploads/${file.filename}`; // Fallback
+    try {
+      console.log('[submitTicket] Uploading to Cloudinary...');
+      const uploadResult = await cloudinary.uploader.upload(file.path, {
+        folder: 'cleansight-ai/tickets',
+      });
+      finalImageUrl = uploadResult.secure_url;
+      console.log('[submitTicket] Cloudinary Upload Success:', finalImageUrl);
+      
+      // Delete local file after upload
+      fs.unlink(file.path, (err) => {
+        if (err) console.error('[submitTicket] Local file delete failed:', err);
+      });
+    } catch (err) {
+      console.error('[submitTicket] Cloudinary Upload Failed:', err);
+      // If cloudinary fails, we still have the local file path as fallback
+    }
+
     const ticket = new Ticket({
       assignedArea,
       userId: resolvedUserId,
@@ -259,7 +280,7 @@ const submitTicket = async (req, res) => {
       role: role || 'citizen',
       aiCategory: category,
       confidence,
-      imageUrl: `/uploads/${file.filename}`,
+      imageUrl: finalImageUrl,
       description,
       location,
       lat: lat ? Number(lat) : null,
@@ -353,12 +374,22 @@ const analyzeImage = async (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'No image uploaded' });
 
     const aiResult = await categorizeWasteImage(req.file.path, req.file.mimetype);
+    
+    // Clean up local file after analysis
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error('[analyzeImage] Local file delete failed:', err);
+    });
+
     res.status(200).json({
       category: aiResult?.category || 'General Waste',
       confidence: aiResult?.confidence || 50
     });
   } catch (error) {
     console.error('[analyzeImage] error:', error);
+    // Try to cleanup even on error
+    if (req.file) {
+      fs.unlink(req.file.path, () => {});
+    }
     res.status(500).json({ message: 'AI Analysis failed', error: error.message });
   }
 };

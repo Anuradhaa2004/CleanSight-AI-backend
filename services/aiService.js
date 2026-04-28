@@ -21,23 +21,45 @@ const categorizeWasteImage = async (imagePath, mimeType) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
     const imagePart = fileToGenerativePart(imagePath, mimeType || "image/jpeg");
 
-    const prompt = `You are an expert civic issue categorization AI. 
-Analyze the image and categorize the primary civic issue shown into EXACTLY ONE of these categories:
-1. "Dead Animal" (carcasses, animal remains)
-2. "Potholes" (broken road, severe asphalt damage, large holes)
-3. "Sewer Damage" (clogged drains, broken manholes, wastewater leaks, sewage)
-4. "General Waste" (garbage, litter dumps, loose trash, overflowing bins)
+    const prompt = `
+  Classify this civic issue image into ONLY ONE category:
 
-IMPORTANT: You must respond in STRICT JSON format. Do not use markdown blocks. Do not add any conversational text.
+  Dead Animal
+  Potholes
+  Sewer Damage
+  General Waste
+
+  Rules:
+  - Return JSON only
+  - No explanation
+  - Choose closest category
+
+Format:
 {
-  "category": "exact category string from the 4 options above",
-  "confidence": score from 0 to 100 representing certainty
-}`;
-
-    const result = await model.generateContent([prompt, imagePart]);
+"category": "Dead Animal | Potholes | Sewer Damage | General Waste",
+"confidence": number
+}
+`;
+    // const result = await model.generateContent([prompt, imagePart]);
+    const result = await model.generateContent({
+  contents: [
+    {
+      role: "user",
+      parts: [
+        { text: prompt },
+        imagePart
+      ]
+    }
+  ],
+  generationConfig: {
+    temperature: 0.1,
+    topK: 1,
+    topP: 1
+  }
+});
     const response = await result.response;
     const output = response.text();
 
