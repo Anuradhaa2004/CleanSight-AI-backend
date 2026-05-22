@@ -3,64 +3,130 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 let transporter;
+let emailEnabled = false;
+
+const parseBool = (value, defaultValue = false) => {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
+  return defaultValue;
+};
+
+const shouldSimulateEmail = () => {
+  const flag = String(process.env.EMAIL_SIMULATE || '').toLowerCase();
+  if (flag === '1' || flag === 'true' || flag === 'yes') return true;
+  if (flag === '0' || flag === 'false' || flag === 'no') return false;
+  return process.env.NODE_ENV !== 'production';
+};
+
+const withTimeout = async (promise, timeoutMs, label) => {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs);
+    timer.unref?.();
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const sendMailWithRetry = async (mailOptions, label) => {
+  const timeoutMs = Number(process.env.SMTP_SEND_TIMEOUT_MS || 20000);
+  const retries = Number(process.env.SMTP_SEND_RETRIES || 1);
+
+  let lastError;
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    try {
+      return await withTimeout(transporter.sendMail(mailOptions), timeoutMs, `[EmailService] ${label}`);
+    } catch (error) {
+      lastError = error;
+      const code = error?.code ? ` code=${error.code}` : '';
+      console.error(`[EmailService] ${label} failed (attempt ${attempt}/${retries + 1}).${code}`, error?.message || error);
+      try { transporter?.close?.(); } catch (_) {}
+    }
+  }
+  throw lastError;
+};
 
 const setupTransporter = () => {
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      connectionTimeout: 10000, // 10 seconds
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+    const smtpSecure =
+      process.env.SMTP_SECURE !== undefined
+        ? String(process.env.SMTP_SECURE).toLowerCase() === 'true'
+        : undefined;
 
-    const verifyTimeoutMs = 8000;
-    const verifyTimeout = new Promise((_, reject) => {
-      const timer = setTimeout(() => reject(new Error(`SMTP verify timeout after ${verifyTimeoutMs}ms`)), verifyTimeoutMs);
-      timer.unref?.();
-    });
+    transporter = nodemailer.createTransport(
+      smtpHost
+        ? {
+            host: smtpHost,
+            port: smtpPort || 587,
+            secure: smtpSecure ?? (smtpPort === 465),
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS,
+            },
+            connectionTimeout: 20000,
+            greetingTimeout: 20000,
+            socketTimeout: 30000,
+          }
+        : {
+            service: 'gmail',
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS,
+            },
+            connectionTimeout: 20000,
+            greetingTimeout: 20000,
+            socketTimeout: 30000,
+          },
+    );
 
-    Promise.race([transporter.verify(), verifyTimeout])
-      .then(() => {
-        console.log('[EmailService] SMTP connection verified.');
-      })
-      .catch((error) => {
-        console.error('[EmailService] SMTP verify failed. Emails may not be sent until fixed.', error);
-        transporter = null;
-      })
-      .finally(() => {
-        try { transporter?.close?.(); } catch (_) {}
-      });
+    emailEnabled = true;
+
+    const shouldVerify = parseBool(process.env.SMTP_VERIFY, false);
+    if (shouldVerify) {
+      const verifyTimeoutMs = Number(process.env.SMTP_VERIFY_TIMEOUT_MS || 20000);
+      withTimeout(transporter.verify(), verifyTimeoutMs, '[EmailService] SMTP verify')
+        .then(() => {
+          console.log('[EmailService] SMTP connection verified.');
+        })
+        .catch((error) => {
+          console.error('[EmailService] SMTP verify failed (will still try to send emails).', error?.message || error);
+        });
+    }
     console.log('✅ Gmail SMTP Transporter Initialized!');
   } else {
     console.log('\n--- WARNING: No SMTP credentials in .env ---');
     transporter = null;
+    emailEnabled = false;
   }
 };
 
 setupTransporter();
 
 const sendOTP = async (email, otp) => {
-  if (!transporter) {
+  if (!transporter || !emailEnabled) {
     console.log('\n=======================================');
     console.log(`[TERMINAL LOG] OTP FOR: ${email}`);
     console.log(`CODE: ${otp}`);
     console.log('=======================================\n');
-    return true;
+    return shouldSimulateEmail();
   }
 
   try {
     console.log(`[EmailService] Attempting to send OTP email to ${email}...`);
-    const info = await transporter.sendMail({
+    const info = await sendMailWithRetry({
       from: `"CleanSight AI" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "Your OTP for CleanSight AI",
       text: `Your OTP is: ${otp}`,
       html: `<b>Your OTP is: ${otp}</b>`,
-    });
+    }, 'OTP email');
     console.log("Real Email Message sent: %s", info.messageId);
     return true;
   } catch (error) {
@@ -70,22 +136,22 @@ const sendOTP = async (email, otp) => {
 };
 
 const sendPasswordReset = async (email, resetUrl) => {
-  if (!transporter) {
+  if (!transporter || !emailEnabled) {
     console.log('\n=======================================');
     console.log(`[TEST MODE] PASSWORD RESET FOR: ${email}`);
     console.log(`RESET LINK: ${resetUrl}`);
     console.log('=======================================\n');
-    return true;
+    return shouldSimulateEmail();
   }
 
   try {
-    const info = await transporter.sendMail({
+    const info = await sendMailWithRetry({
       from: '"CleanSight AI" <no-reply@cleansight.ai>',
       to: email,
       subject: 'Reset your CleanSight AI password',
       text: `Reset your password using this link: ${resetUrl}`,
       html: `<p>Reset your password using this link:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
-    });
+    }, 'Password reset email');
     console.log('Real Email Message sent: %s', info.messageId);
     return true;
   } catch (error) {
@@ -95,17 +161,17 @@ const sendPasswordReset = async (email, resetUrl) => {
 };
 
 const sendResetOTP = async (email, otp) => {
-  if (!transporter) {
+  if (!transporter || !emailEnabled) {
     console.log('\n=======================================');
     console.log(`[TERMINAL LOG] PASSWORD RESET OTP FOR: ${email}`);
     console.log(`CODE: ${otp}`);
     console.log('=======================================\n');
-    return true;
+    return shouldSimulateEmail();
   }
 
   try {
     console.log(`[EmailService] Attempting to send Reset OTP email to ${email}...`);
-    const info = await transporter.sendMail({
+    const info = await sendMailWithRetry({
       from: process.env.SMTP_USER,
       to: email,
       subject: "Password Reset Code - CleanSight AI",
@@ -123,7 +189,7 @@ const sendResetOTP = async (email, otp) => {
           <p style="font-size: 12px; color: #64748b; text-align: center;">CleanSight AI - Professional Waste Management Platform</p>
         </div>
       `,
-    });
+    }, 'Reset OTP email');
     console.log("Reset OTP Email sent: %s", info.messageId);
     return true;
   } catch (error) {
@@ -140,7 +206,7 @@ const sendCitizenConfirmation = async (ticket) => {
   try {
     console.log(`[EmailService] Sending confirmation email to ${ticket.userEmail}...`);
     const { _id, aiCategory, location, user_name, userEmail } = ticket;
-    await transporter.sendMail({
+    await sendMailWithRetry({
       from: `"CleanSight AI" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `Ticket Confirmation - ${aiCategory} [#${_id.toString().slice(-6).toUpperCase()}]`,
@@ -162,7 +228,7 @@ const sendCitizenConfirmation = async (ticket) => {
           <p style="font-size: 12px; color: #64748b; text-align: center;">CleanSight AI - Professional Waste Management Platform</p>
         </div>
       `,
-    });
+    }, 'Citizen confirmation email');
     console.log(`Confirmation email sent successfully to ${userEmail}`);
     return true;
   } catch (error) {
@@ -175,7 +241,7 @@ const sendAuthorityAlert = async (ticket, authorityEmail) => {
   if (!transporter) return true;
   try {
     const { _id, aiCategory, location, user_name, description, googleMapsUrl } = ticket;
-    await transporter.sendMail({
+    await sendMailWithRetry({
       from: process.env.SMTP_USER,
       to: authorityEmail,
       subject: `URGENT: New Incident in ${location.split(',').pop().trim()}`,
@@ -197,7 +263,7 @@ const sendAuthorityAlert = async (ticket, authorityEmail) => {
           <p style="font-size: 12px; color: #64748b; text-align: center;">Authority Command Center - CleanSight AI Notification System</p>
         </div>
       `,
-    });
+    }, 'Authority alert email');
     console.log(`Alert email sent to authority: ${authorityEmail}`);
   } catch (error) {
     console.error("Error sending authority alert:", error);
@@ -227,7 +293,7 @@ const sendStatusUpdateEmail = async (ticket) => {
       bodyText = `The municipal authority has reviewed your report. After assessment, it has been marked as <b>Closed/Rejected</b>. Thank you for utilizing the CleanSight AI platform.`;
     }
 
-    await transporter.sendMail({
+    await sendMailWithRetry({
       from: `"CleanSight AI" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `Update: Your Complaint [#${_id.toString().slice(-6).toUpperCase()}] is now ${status}`,
@@ -253,7 +319,7 @@ const sendStatusUpdateEmail = async (ticket) => {
           <p style="font-size: 12px; color: #94a3b8; text-align: center;">CleanSight AI - Smart City Waste Management</p>
         </div>
       `,
-    });
+    }, 'Status update email');
     console.log(`Status update email sent to citizen: ${userEmail} for status: ${status}`);
     return true;
   } catch (error) {
@@ -272,7 +338,7 @@ const sendResolutionVerificationEmail = async (ticket) => {
     const { _id, aiCategory, user_name, userEmail, trackingId, description, location } = ticket;
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
-    await transporter.sendMail({
+    await sendMailWithRetry({
       from: `"CleanSight AI Support" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `Action Required: Verify Resolution [#${trackingId}]`,
@@ -319,7 +385,7 @@ const sendResolutionVerificationEmail = async (ticket) => {
           </div>
         </div>
       `,
-    });
+    }, 'Resolution verification email');
     console.log(`Resolution verification email sent to citizen: ${userEmail}`);
     return true;
   } catch (error) {
