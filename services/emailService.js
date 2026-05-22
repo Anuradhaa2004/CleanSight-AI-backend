@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 let transporter;
 
@@ -14,6 +16,24 @@ const setupTransporter = () => {
       greetingTimeout: 10000,
       socketTimeout: 15000,
     });
+
+    const verifyTimeoutMs = 8000;
+    const verifyTimeout = new Promise((_, reject) => {
+      const timer = setTimeout(() => reject(new Error(`SMTP verify timeout after ${verifyTimeoutMs}ms`)), verifyTimeoutMs);
+      timer.unref?.();
+    });
+
+    Promise.race([transporter.verify(), verifyTimeout])
+      .then(() => {
+        console.log('[EmailService] SMTP connection verified.');
+      })
+      .catch((error) => {
+        console.error('[EmailService] SMTP verify failed. Emails may not be sent until fixed.', error);
+        transporter = null;
+      })
+      .finally(() => {
+        try { transporter?.close?.(); } catch (_) {}
+      });
     console.log('✅ Gmail SMTP Transporter Initialized!');
   } else {
     console.log('\n--- WARNING: No SMTP credentials in .env ---');
@@ -35,7 +55,7 @@ const sendOTP = async (email, otp) => {
   try {
     console.log(`[EmailService] Attempting to send OTP email to ${email}...`);
     const info = await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: `"CleanSight AI" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "Your OTP for CleanSight AI",
       text: `Your OTP is: ${otp}`,

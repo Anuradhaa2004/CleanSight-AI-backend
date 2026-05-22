@@ -53,10 +53,14 @@ const requestOTP = async (req, res) => {
     console.log(`[AuthController] User data saved. Handing off to EmailService...`);
     
     // Send OTP via email
-    await sendOTP(email, otp);
-    console.log(`[AuthController] EmailService handoff complete.`);
+    const sent = await sendOTP(email, otp);
+    console.log(`[AuthController] EmailService handoff complete. sent=${sent}`);
 
-    res.status(200).json({ message: 'OTP sent successfully to email' });
+    if (!sent) {
+      return res.status(502).json({ message: 'OTP generation succeeded, but sending email failed. Please try again later.' });
+    }
+
+    return res.status(200).json({ message: 'OTP sent successfully to email' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -234,11 +238,15 @@ const forgotPassword = async (req, res) => {
     await user.save();
 
     const { sendResetOTP } = require('../services/emailService');
-    await sendResetOTP(email, otp);
+    const sent = await sendResetOTP(email, otp);
 
-    return res.status(200).json({ 
-      message: 'Success', 
-      detail: 'Verification code sent to your email.' 
+    if (!sent) {
+      return res.status(502).json({ message: 'Reset code generated, but sending email failed. Please try again later.' });
+    }
+
+    return res.status(200).json({
+      message: 'Success',
+      detail: 'Verification code sent to your email.'
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
