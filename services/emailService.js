@@ -46,8 +46,15 @@ const sendMailWithRetry = async (mailOptions, label) => {
       const code = error?.code ? ` code=${error.code}` : '';
       console.error(`[EmailService] ${label} failed (attempt ${attempt}/${retries + 1}).${code}`, error?.message || error);
       try { transporter?.close?.(); } catch (_) {}
+      // Recreate the transporter so the next retry (or future call) uses a fresh connection
+      if (attempt < retries + 1) {
+        console.log(`[EmailService] Recreating SMTP transporter before retry...`);
+        setupTransporter();
+      }
     }
   }
+  // Recreate the transporter for future calls even after all retries are exhausted
+  setupTransporter();
   throw lastError;
 };
 
@@ -88,7 +95,7 @@ const setupTransporter = () => {
 
     emailEnabled = true;
 
-    const shouldVerify = parseBool(process.env.SMTP_VERIFY, false);
+    const shouldVerify = parseBool(process.env.SMTP_VERIFY, true);
     if (shouldVerify) {
       const verifyTimeoutMs = Number(process.env.SMTP_VERIFY_TIMEOUT_MS || 20000);
       withTimeout(transporter.verify(), verifyTimeoutMs, '[EmailService] SMTP verify')
@@ -111,11 +118,13 @@ setupTransporter();
 
 const sendOTP = async (email, otp) => {
   if (!transporter || !emailEnabled) {
-    console.log('\n=======================================');
-    console.log(`[TERMINAL LOG] OTP FOR: ${email}`);
-    console.log(`CODE: ${otp}`);
-    console.log('=======================================\n');
-    return shouldSimulateEmail();
+    console.error('\n=======================================');
+    console.error(`[EmailService] ⚠️  NO SMTP TRANSPORTER — email NOT sent!`);
+    console.error(`[EmailService] Set SMTP_USER and SMTP_PASS in your .env to enable real emails.`);
+    console.error(`[TERMINAL LOG] OTP FOR: ${email}`);
+    console.error(`CODE: ${otp}`);
+    console.error('=======================================\n');
+    return false;
   }
 
   try {
@@ -137,11 +146,12 @@ const sendOTP = async (email, otp) => {
 
 const sendPasswordReset = async (email, resetUrl) => {
   if (!transporter || !emailEnabled) {
-    console.log('\n=======================================');
-    console.log(`[TEST MODE] PASSWORD RESET FOR: ${email}`);
-    console.log(`RESET LINK: ${resetUrl}`);
-    console.log('=======================================\n');
-    return shouldSimulateEmail();
+    console.error('\n=======================================');
+    console.error(`[EmailService] ⚠️  NO SMTP TRANSPORTER — password reset email NOT sent!`);
+    console.error(`[TERMINAL LOG] PASSWORD RESET FOR: ${email}`);
+    console.error(`RESET LINK: ${resetUrl}`);
+    console.error('=======================================\n');
+    return false;
   }
 
   try {
@@ -162,11 +172,12 @@ const sendPasswordReset = async (email, resetUrl) => {
 
 const sendResetOTP = async (email, otp) => {
   if (!transporter || !emailEnabled) {
-    console.log('\n=======================================');
-    console.log(`[TERMINAL LOG] PASSWORD RESET OTP FOR: ${email}`);
-    console.log(`CODE: ${otp}`);
-    console.log('=======================================\n');
-    return shouldSimulateEmail();
+    console.error('\n=======================================');
+    console.error(`[EmailService] ⚠️  NO SMTP TRANSPORTER — reset OTP email NOT sent!`);
+    console.error(`[TERMINAL LOG] PASSWORD RESET OTP FOR: ${email}`);
+    console.error(`CODE: ${otp}`);
+    console.error('=======================================\n');
+    return false;
   }
 
   try {
