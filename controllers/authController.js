@@ -284,6 +284,58 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const syncFirebaseUser = async (req, res) => {
+  const { email, name, role, assignedArea, uid } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
+  try {
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({
+        email,
+        password: uid || 'firebase-auth-managed',
+        name: name || email.split('@')[0],
+        role: role || 'citizen',
+        assignedArea: assignedArea || '',
+        isVerified: true
+      });
+      await user.save();
+    } else {
+      let updated = false;
+      if (name && (!user.name || user.name === user.email.split('@')[0])) {
+        user.name = name;
+        updated = true;
+      }
+      if (role && user.role !== role) {
+        user.role = role;
+        updated = true;
+      }
+      if (assignedArea && user.assignedArea !== assignedArea) {
+        user.assignedArea = assignedArea;
+        updated = true;
+      }
+      if (!user.isVerified) {
+        user.isVerified = true;
+        updated = true;
+      }
+      if (updated) await user.save();
+    }
+
+    return res.status(200).json({
+      message: 'User synced successfully',
+      user: {
+        email: user.email,
+        id: user._id,
+        role: user.role,
+        name: user.name,
+        assignedArea: user.assignedArea || ''
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   requestOTP,
   verifyOTP,
@@ -292,6 +344,7 @@ module.exports = {
   updateAssignedArea,
   forgotPassword,
   resetPassword,
+  syncFirebaseUser,
   updateProfile: async (req, res) => {
     const { originalEmail, email, name, password, assignedArea, about, profilePic, dob, gender, exactLocation, country, languages } = req.body;
     const findEmail = originalEmail || email;
