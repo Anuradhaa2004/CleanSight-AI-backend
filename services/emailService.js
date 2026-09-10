@@ -32,7 +32,12 @@ const sendViaEmailJS = async ({ to, toName, subject, html, text, otp, resetUrl, 
     user_id: publicKey,
     template_params: {
       to_email: to,
+      email: to,
+      to: to,
+      user_email: to,
+      recipient: to,
       to_name: toName || (to ? to.split('@')[0] : 'User'),
+      name: toName || (to ? to.split('@')[0] : 'User'),
       subject: subject,
       message_html: html,
       message: text || subject,
@@ -40,6 +45,7 @@ const sendViaEmailJS = async ({ to, toName, subject, html, text, otp, resetUrl, 
       reset_url: resetUrl || '',
       ...extraParams
     }
+
   };
 
   if (privateKey) {
