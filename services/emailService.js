@@ -325,34 +325,115 @@ const sendCitizenConfirmation = async (ticket) => {
 const sendAuthorityAlert = async (ticket, authorityEmail) => {
   const { _id, aiCategory, location, user_name, description, googleMapsUrl } = ticket;
   const areaName = location ? location.split(',').pop().trim() : 'Jurisdiction';
+  const trackingId = _id ? _id.toString().toUpperCase() : 'NEW-REPORT';
+  const clientUrl = process.env.CLIENT_URL || 'https://clean-sight-ai-frontend.vercel.app';
+  const dashboardUrl = `${clientUrl}/authority-dashboard`;
+
+  const plainText = `[URGENT AUTHORITY ALERT - CLEANSIGHT AI]\n\nA new civic waste incident has been reported in your jurisdiction (${areaName}).\n\n- Tracking ID: #${trackingId}\n- Category: ${aiCategory}\n- Citizen: ${user_name}\n- Location: ${location}\n- Description: ${description || 'No description provided'}\n\nReview & Dispatch Team: ${dashboardUrl}\n${googleMapsUrl ? `View Location on Map: ${googleMapsUrl}\n` : ''}\n— CleanSight AI Municipal Command Center`;
 
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;">
-      <h2 style="color: #ef4444;">⚠️ New Waste Incident Reported</h2>
-      <p>A new complaint has been filed in your assigned area. Please review details below:</p>
-      <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #fee2e2;">
-        <p><b>Citizen Name:</b> ${user_name}</p>
-        <p><b>Category:</b> ${aiCategory}</p>
-        <p><b>Description:</b> ${description || 'No description provided'}</p>
-        <p><b>Location:</b> ${location}</p>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 20px; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #334155; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+        
+        <!-- Header: Alert Badge & Municipal Header -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 32px 28px; border-bottom: 4px solid #ef4444;">
+          <div style="display: inline-block; background-color: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; padding: 4px 14px; border-radius: 20px; color: #fca5a5; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px;">
+            ⚠️ ACTION REQUIRED • PRIORITY ALERT
+          </div>
+          <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">
+            New Waste Incident Reported
+          </h1>
+          <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 14px;">
+            Assigned Jurisdiction: <strong style="color: #38bdf8;">${areaName}</strong>
+          </p>
+        </div>
+
+        <!-- Incident Details Container -->
+        <div style="padding: 30px 28px;">
+          <p style="margin: 0 0 20px 0; color: #334155; font-size: 15px; line-height: 1.5;">
+            A verified citizen has submitted a civic waste complaint requiring inspection and field team dispatch:
+          </p>
+
+          <!-- Key Metrics Grid -->
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; width: 35%;">Tracking ID:</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 800; font-family: monospace;">#${trackingId}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Category:</td>
+                <td style="padding: 8px 0;">
+                  <span style="background-color: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 13px;">
+                    ${aiCategory}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Reported By:</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">${user_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Location:</td>
+                <td style="padding: 8px 0; color: #0f172a; font-weight: 600; line-height: 1.4;">${location}</td>
+              </tr>
+              ${description ? `
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Notes / Details:</td>
+                <td style="padding: 8px 0; color: #475569; font-style: italic; line-height: 1.4;">"${description}"</td>
+              </tr>` : ''}
+            </table>
+
+          </div>
+
+          <!-- Actions -->
+          <div style="text-align: center; margin: 30px 0 10px 0;">
+            <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #1E75FF 0%, #0052cc 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 14px rgba(30, 117, 255, 0.35); margin-right: 8px; margin-bottom: 10px;">
+              Open Authority Dashboard →
+            </a>
+            ${googleMapsUrl ? `
+            <a href="${googleMapsUrl}" style="display: inline-block; background-color: #f1f5f9; color: #334155; text-decoration: none; padding: 14px 20px; border-radius: 10px; font-weight: 700; font-size: 14px; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+              📍 View on Google Maps
+            </a>` : ''}
+          </div>
+
+          <p style="margin: 20px 0 0 0; color: #94a3b8; font-size: 12px; text-align: center; line-height: 1.4;">
+            Please log in to your Authority Dashboard to update the status (In Progress / Resolved) once sanitary officers are assigned.
+          </p>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f8fafc; padding: 18px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0; color: #64748b; font-size: 12px; font-weight: 600;">
+            CleanSight AI • Municipal Authority Command Center
+          </p>
+        </div>
+
       </div>
-      ${googleMapsUrl ? `
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${googleMapsUrl}" style="background: #1E75FF; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">View Interactive Map</a>
-      </div>` : ''}
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-      <p style="font-size: 12px; color: #64748b; text-align: center;">Authority Command Center - CleanSight AI</p>
-    </div>
+    </body>
+    </html>
   `;
 
   return await dispatchEmail({
     to: authorityEmail,
-    subject: `URGENT: New Incident in ${areaName}`,
+    subject: `⚠️ URGENT: New Waste Incident in ${areaName} [#${trackingId.slice(-6)}]`,
+    text: plainText,
     html: html,
     extraParams: {
       area: areaName,
       category: aiCategory,
-      location: location
+      location: location,
+      tracking_id: trackingId,
+      citizen_name: user_name,
+      dashboard_url: dashboardUrl
     }
   }, 'Authority Alert');
 };
