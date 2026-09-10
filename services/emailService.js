@@ -150,24 +150,116 @@ const dispatchEmail = async ({ to, toName, subject, html, text, otp, resetUrl, e
 // -------------------------------------------------------------
 
 const sendOTP = async (email, otp) => {
+  const plainText = `Hello,\n\nThank you for joining CleanSight AI.\n\nYour 6-digit Verification Code is: ${otp}\n\nThis code will expire in 10 minutes. Please do not share this code with anyone.\n\n— CleanSight AI Team`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 20px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1E75FF 0%, #0052cc 100%); padding: 32px 24px; text-align: center;">
+          <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">CleanSight AI</h1>
+          <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Smart Civic Cleanliness & Waste Management</p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 32px 28px;">
+          <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Verify Your Email Address</h2>
+          <p style="margin: 0 0 24px 0; color: #475569; font-size: 15px; line-height: 1.5;">
+            Thank you for registering with CleanSight AI. Please use the following 6-digit verification code to complete your signup:
+          </p>
+
+          <!-- OTP Box -->
+          <div style="text-align: center; margin: 28px 0;">
+            <div style="display: inline-block; background-color: #eff6ff; border: 2px dashed #1E75FF; border-radius: 12px; padding: 16px 36px;">
+              <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #1E75FF;">${otp}</span>
+            </div>
+          </div>
+
+          <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; text-align: center;">
+            ⏱️ This verification code is valid for <strong>10 minutes</strong>.
+          </p>
+          <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
+            If you did not request this code, you can safely ignore this email.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f1f5f9; padding: 18px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0; color: #64748b; font-size: 12px; font-weight: 600;">CleanSight AI • Toward a Cleaner Future</p>
+        </div>
+
+      </div>
+    </body>
+    </html>
+  `;
+
   return await dispatchEmail({
     to: email,
-    subject: 'Your OTP for CleanSight AI',
+    subject: `Your CleanSight AI Verification Code is ${otp}`,
     otp: otp,
-    text: `Your OTP is: ${otp}`,
-    html: `<b>Your OTP is: ${otp}</b>`
+    text: plainText,
+    html: html
   }, 'Registration OTP');
 };
 
 const sendPasswordReset = async (email, resetUrl) => {
+  const plainText = `Hello,\n\nWe received a request to reset your CleanSight AI password. Use this link to reset it:\n${resetUrl}\n\nThis link will expire soon.\n\n— CleanSight AI Team`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 20px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+        
+        <div style="background: linear-gradient(135deg, #1E75FF 0%, #0052cc 100%); padding: 32px 24px; text-align: center;">
+          <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800;">CleanSight AI</h1>
+          <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">Password Reset Request</p>
+        </div>
+
+        <div style="padding: 32px 28px; text-align: center;">
+          <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Reset Your Password</h2>
+          <p style="margin: 0 0 28px 0; color: #475569; font-size: 15px; line-height: 1.5;">
+            Click the button below to choose a new password for your account:
+          </p>
+
+          <a href="${resetUrl}" style="display: inline-block; background-color: #1E75FF; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(30, 117, 255, 0.3);">
+            Reset Password
+          </a>
+
+          <p style="margin: 28px 0 0 0; color: #94a3b8; font-size: 12px;">
+            If you did not make this request, you can safely ignore this email.
+          </p>
+        </div>
+
+        <div style="background-color: #f1f5f9; padding: 18px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0; color: #64748b; font-size: 12px;">CleanSight AI • Secure Authentication</p>
+        </div>
+
+      </div>
+    </body>
+    </html>
+  `;
+
   return await dispatchEmail({
     to: email,
     subject: 'Reset your CleanSight AI password',
     resetUrl: resetUrl,
-    text: `Reset your password using this link: ${resetUrl}`,
-    html: `<p>Reset your password using this link:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`
+    text: plainText,
+    html: html
   }, 'Password Reset');
 };
+
 
 const sendResetOTP = async (email, otp) => {
   const html = `
