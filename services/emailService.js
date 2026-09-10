@@ -288,7 +288,8 @@ const sendResetOTP = async (email, otp) => {
 const sendCitizenConfirmation = async (ticket) => {
   const { _id, aiCategory, location, user_name, userEmail } = ticket;
   const trackingId = _id ? _id.toString().toUpperCase() : 'TICKET';
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://clean-sight-ai-frontend.vercel.app';
+
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;">
@@ -325,9 +326,9 @@ const sendCitizenConfirmation = async (ticket) => {
 const sendAuthorityAlert = async (ticket, authorityEmail) => {
   const { _id, aiCategory, location, user_name, description, googleMapsUrl } = ticket;
   const areaName = location ? location.split(',').pop().trim() : 'Jurisdiction';
-  const trackingId = _id ? _id.toString().toUpperCase() : 'NEW-REPORT';
   const clientUrl = process.env.CLIENT_URL || 'https://clean-sight-ai-frontend.vercel.app';
-  const dashboardUrl = `${clientUrl}/authority-dashboard`;
+  const dashboardUrl = `${clientUrl}/authority`;
+
 
   const plainText = `[URGENT AUTHORITY ALERT - CLEANSIGHT AI]\n\nA new civic waste incident has been reported in your jurisdiction (${areaName}).\n\n- Tracking ID: #${trackingId}\n- Category: ${aiCategory}\n- Citizen: ${user_name}\n- Location: ${location}\n- Description: ${description || 'No description provided'}\n\nReview & Dispatch Team: ${dashboardUrl}\n${googleMapsUrl ? `View Location on Map: ${googleMapsUrl}\n` : ''}\n— CleanSight AI Municipal Command Center`;
 
@@ -441,7 +442,7 @@ const sendAuthorityAlert = async (ticket, authorityEmail) => {
 const sendStatusUpdateEmail = async (ticket) => {
   const { _id, aiCategory, status, user_name, userEmail } = ticket;
   const trackingId = _id ? _id.toString().toUpperCase() : 'TICKET';
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://clean-sight-ai-frontend.vercel.app';
 
   let statusColor = '#64748b';
   let titleText = 'Complaint Status Updated';
@@ -489,7 +490,7 @@ const sendStatusUpdateEmail = async (ticket) => {
 
 const sendResolutionVerificationEmail = async (ticket) => {
   const { _id, aiCategory, user_name, userEmail, trackingId, description, location } = ticket;
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://clean-sight-ai-frontend.vercel.app';
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border-radius: 16px; border: 1px solid #e2e8f0; background-color: #ffffff;">
