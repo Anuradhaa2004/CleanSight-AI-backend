@@ -20,3 +20,5 @@ database.sqlite
 # Uploads
 uploads/
 
+# Local DB data
+data/
